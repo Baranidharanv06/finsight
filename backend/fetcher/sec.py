@@ -2,7 +2,7 @@ import httpx
 import re
 from bs4 import BeautifulSoup
 
-HEADERS = {"User-Agent": "FinSight baranidharanviswanathan2006@email.com"}
+HEADERS = {"User-Agent": "FinSight yourname@email.com"}
 
 def get_cik(ticker: str) -> str:
     r = httpx.get("https://www.sec.gov/files/company_tickers.json", headers=HEADERS)
@@ -19,12 +19,17 @@ def get_latest_10k_text(cik: str) -> str:
     for i, form in enumerate(filings["form"]):
         if form == "10-K":
             accession = filings["accessionNumber"][i].replace("-", "")
-            doc = filings["primaryDocument"][i]
-            filing_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/{doc}"
+            primary_doc = filings["primaryDocument"][i]
+
+            # Skip XBRL files
+            if primary_doc.endswith(".xml"):
+                continue
+
+            filing_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/{primary_doc}"
             raw_html = httpx.get(filing_url, headers=HEADERS).text
             return _extract_text(raw_html)
 
-    raise ValueError("No 10-K filing found")
+    raise ValueError("No 10-K HTML document found")
 
 def _extract_text(raw_html: str) -> str:
     soup = BeautifulSoup(raw_html, "html.parser")
