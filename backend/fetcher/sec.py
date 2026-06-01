@@ -33,8 +33,20 @@ def get_latest_10k_text(cik: str) -> str:
 
 def _extract_text(raw_html: str) -> str:
     soup = BeautifulSoup(raw_html, "html.parser")
-    for tag in soup.find_all(["script", "style", "table"]):
+    
+    # Remove XBRL, scripts, styles, tables
+    for tag in soup.find_all(["script", "style", "table", "ix:header"]):
         tag.decompose()
+    
+    # Remove inline XBRL tags but keep their text content
+    for tag in soup.find_all(re.compile(r"^ix:")):
+        tag.unwrap()
+    
     text = soup.get_text(separator="\n")
+    
+    # Remove XBRL namespace junk
+    text = re.sub(r"http\S+", "", text)
+    text = re.sub(r"[A-Z0-9]{2,}:[A-Za-z]+", "", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
+    
     return text.strip()
