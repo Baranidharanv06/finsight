@@ -38,5 +38,18 @@ results = search(query_vector, top_k=3)
 for r in results:
     print(f"\nScore: {r.score:.3f}")
     print(r.payload["text"][:200])
-    from backend.retriever.store import client as qdrant_client
-qdrant_client.close()
+
+
+from backend.retriever.rerank import rerank
+
+# Retrieve more candidates than we need (e.g. 10)
+results = search(query_vector, top_k=10)
+candidate_texts = [r.payload["text"] for r in results]
+
+# Rerank down to top 3
+reranked = rerank(query, candidate_texts, top_k=3)
+
+print("\n--- Reranked results ---")
+for text, score in reranked:
+    print(f"\nRerank score: {score:.3f}")
+    print(text[:200])
