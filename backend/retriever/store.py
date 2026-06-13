@@ -8,11 +8,12 @@ VECTOR_SIZE = 384  # matches all-MiniLM-L6-v2
 client = QdrantClient(path="./qdrant_data")  # local on-disk storage
 
 def init_collection():
-    if not client.collection_exists(COLLECTION_NAME):
-        client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
-        )
+    if client.collection_exists(COLLECTION_NAME):
+        client.delete_collection(COLLECTION_NAME)
+    client.create_collection(
+        collection_name=COLLECTION_NAME,
+        vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
+    )
 
 def upsert_chunks(chunks: list[str], vectors: list[list[float]], metadata: dict):
     points = []
