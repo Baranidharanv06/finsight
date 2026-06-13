@@ -53,3 +53,10 @@ print("\n--- Reranked results ---")
 for text, score in reranked:
     print(f"\nRerank score: {score:.3f}")
     print(text[:200])
+    from backend.retriever.generate import generate_answer
+
+top_chunks = [text for text, score in reranked]
+answer = generate_answer(query, top_chunks)
+
+print("\n--- Generated Answer ---")
+print(answer)
