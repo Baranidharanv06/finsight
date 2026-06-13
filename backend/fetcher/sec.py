@@ -33,12 +33,17 @@ def _extract_text(raw_html: str) -> str:
     for tag in soup.find_all(["script", "style", "table"]):
         tag.decompose()
 
-    for tag in soup.find_all(re.compile(r"^ix:")):
-        tag.unwrap()
+    # Remove entire hidden XBRL data sections
+    for tag in soup.find_all(re.compile(r"^ix:(header|resources|nonnumeric|nonfraction)", re.I)):
+        tag.decompose()
+
+    # Remove anything hidden via style
+    for tag in soup.find_all(style=re.compile(r"display:\s*none")):
+        tag.decompose()
 
     text = soup.get_text(separator="\n")
     text = re.sub(r"http\S+", "", text)
-    text = re.sub(r"[A-Z0-9]{2,}:[A-Za-z]+", "", text)
+    text = re.sub(r"[A-Za-z0-9]+:[A-Za-z][A-Za-z0-9]*", "", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
