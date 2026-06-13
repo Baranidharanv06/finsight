@@ -21,32 +21,24 @@ def get_latest_10k_text(cik: str) -> str:
             accession = filings["accessionNumber"][i].replace("-", "")
             primary_doc = filings["primaryDocument"][i]
 
-            # Skip XBRL files
-            if primary_doc.endswith(".xml"):
-                continue
-
             filing_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/{primary_doc}"
-            raw_html = httpx.get(filing_url, headers=HEADERS).text
+            raw_html = httpx.get(filing_url, headers=HEADERS, timeout=60.0).text
             return _extract_text(raw_html)
 
-    raise ValueError("No 10-K HTML document found")
+    raise ValueError("No 10-K document found")
 
 def _extract_text(raw_html: str) -> str:
     soup = BeautifulSoup(raw_html, "html.parser")
-    
-    # Remove XBRL, scripts, styles, tables
-    for tag in soup.find_all(["script", "style", "table", "ix:header"]):
+
+    for tag in soup.find_all(["script", "style", "table"]):
         tag.decompose()
-    
-    # Remove inline XBRL tags but keep their text content
+
     for tag in soup.find_all(re.compile(r"^ix:")):
         tag.unwrap()
-    
+
     text = soup.get_text(separator="\n")
-    
-    # Remove XBRL namespace junk
     text = re.sub(r"http\S+", "", text)
     text = re.sub(r"[A-Z0-9]{2,}:[A-Za-z]+", "", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
-    
+
     return text.strip()
