@@ -22,7 +22,7 @@ def get_latest_10k_text(cik: str) -> str:
             primary_doc = filings["primaryDocument"][i]
 
             filing_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/{primary_doc}"
-            raw_html = httpx.get(filing_url, headers=HEADERS, timeout=60.0).text
+            raw_html = httpx.get(filing_url, headers=HEADERS, timeout=180.0).text
             return _extract_text(raw_html)
 
     raise ValueError("No 10-K document found")
