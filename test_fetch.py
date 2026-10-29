@@ -19,7 +19,7 @@ print(f"Embedded {len(vectors)} chunks")
 print(f"Vector dimension: {len(vectors[0])}")
 print(f"First few values: {vectors[0][:5]}")
 
-from backend.retriever.store import init_collection, upsert_chunks, search
+from backend.retriever.store_with_acre import init_collection, upsert_chunks, search
 
 init_collection()
 

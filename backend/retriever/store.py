@@ -26,13 +26,27 @@ def delete_ticker(ticker: str):
     )
 
 
-def upsert_chunks(chunks: list[str], vectors: list[list[float]], metadata: dict):
+def upsert_chunks(
+    chunks: list[str],
+    vectors: list[list[float]],
+    metadata: dict,
+    per_chunk_metadata: list[dict] | None = None,  # ACRE: e.g. [{"sensitivity": 2}, ...]
+):
+    """
+    metadata: shared across every chunk in this batch (e.g. ticker, doc_type) — unchanged.
+    per_chunk_metadata: optional, one dict per chunk, merged on top of `metadata`
+    for that specific chunk. Used by ACRE to store a per-chunk sensitivity tag.
+    If omitted, behaves exactly as before.
+    """
     points = []
-    for chunk, vector in zip(chunks, vectors):
+    for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
+        payload = {"text": chunk, **metadata}
+        if per_chunk_metadata is not None:
+            payload.update(per_chunk_metadata[i])
         points.append(PointStruct(
             id=str(uuid.uuid4()),
             vector=vector,
-            payload={"text": chunk, **metadata}
+            payload=payload,
         ))
     client.upsert(collection_name=COLLECTION_NAME, points=points)
 

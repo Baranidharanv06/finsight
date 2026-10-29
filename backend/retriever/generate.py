@@ -29,7 +29,7 @@ Question: {query}
 Answer based only on the context above."""
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt}
@@ -58,7 +58,7 @@ Question: {query}
 Compare how each company addresses this, based only on the excerpts above."""
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[
             {"role": "system", "content": COMPARISON_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt}

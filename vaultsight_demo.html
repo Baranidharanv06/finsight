@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VaultSight demo</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#ffffff; --ink:#14181f; --muted:#5b6472; --line:#dde1e7; --accent:#1f4fd8;
+  --full-bg:#e6f4ec; --full-ink:#146c3f; --sum-bg:#fff3d1; --sum-ink:#8a5a00; --red-bg:#fde8e6; --red-ink:#a3261b;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0f1319; --card:#171c24; --ink:#e8ebf0; --muted:#9aa4b2; --line:#2a313c; --accent:#6f95ff;
+    --full-bg:#13301f; --full-ink:#6fd39b; --sum-bg:#3a2d0a; --sum-ink:#f0c15a; --red-bg:#3b1815; --red-ink:#ff8f84; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 20px 60px}
+h1{font-size:24px;margin:0 0 2px}
+.sub{color:var(--muted);margin:0 0 20px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input,textarea,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{resize:vertical;min-height:54px}
+.f1{flex:2;min-width:240px}.f2{flex:1;min-width:130px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button:disabled{opacity:.55;cursor:wait}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chips button{font-size:13px;padding:5px 10px;border-radius:999px;color:var(--muted)}
+.pipeline{display:none;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:14px}
+.step{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;text-align:center;color:var(--muted);transition:all .3s ease}
+.step.active{border-color:var(--accent);color:var(--accent);background:var(--card);font-weight:600;box-shadow:0 0 0 1px var(--accent)}
+.step.done{border-color:var(--full-ink);color:var(--full-ink);background:var(--full-bg);font-weight:600}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:16px}
+.strip div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+.strip b{display:block;font-size:14px;margin-bottom:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.card h2{font-size:16px;margin:0;display:flex;justify-content:space-between;align-items:center}
+.lvl{font-size:11px;color:var(--muted);font-weight:500}
+.answer{font-size:14px;white-space:pre-wrap;border-left:3px solid var(--accent);padding-left:10px;max-height:190px;overflow:auto}
+.chunk{border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12.5px}
+.chunk .top{display:flex;justify-content:space-between;gap:6px;align-items:center;margin-bottom:4px}
+.chip{border-radius:999px;padding:1px 9px;font-weight:600;font-size:11.5px}
+.FULL{background:var(--full-bg);color:var(--full-ink)}
+.SUMMARY{background:var(--sum-bg);color:var(--sum-ink)}
+.REDACTED{background:var(--red-bg);color:var(--red-ink)}
+.bar{height:5px;background:var(--line);border-radius:3px;margin:4px 0 6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.snip{color:var(--muted);word-break:break-word}
+.meta{font-size:11.5px;color:var(--muted)}
+.err{color:var(--red-ink);font-size:13px;white-space:pre-wrap}
+.telemetry{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:4px;flex-wrap:wrap}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;font-size:13px;color:var(--muted)}
+.how b{color:var(--ink)}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>VaultSight</h1>
+  <p class="sub">One question, one shared index, four different logins. ACRE decides per chunk how much each user may see, before anything reaches the language model.</p>
+
+  <div class="panel">
+    <div class="row">
+      <div class="f1"><label for="server">Server URL</label><input id="server" placeholder="http://3.84.173.9:8000"></div>
+      <div class="f2"><label for="ticker">Ticker</label><input id="ticker" value="AAPL"></div>
+      <div class="f2"><label for="pw">Test-user password</label><input id="pw" type="password" placeholder="shared by the 4 test users"></div>
+    </div>
+    <div style="margin-top:12px"><label for="q">Question</label>
+      <textarea id="q">any pending litigation or regulatory issues?</textarea></div>
+    <div class="chips" id="presets"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="run">Run as all four roles</button>
+      <button id="exportAudit" style="display:none;">📥 Export Compliance Audit Report</button>
+      <span class="meta" id="status"></span>
+    </div>
+    <div class="pipeline" id="pipeline">
+      <div class="step" id="step-1">1. 🔐 Cognito Auth</div>
+      <div class="step" id="step-2">2. 🔍 Vector Search</div>
+      <div class="step" id="step-3">3. 🛡️ ACRE Policy</div>
+      <div class="step" id="step-4">4. 📝 DynamoDB Audit</div>
+      <div class="step" id="step-5">5. ✨ LLM Response</div>
+    </div>
+  </div>
+
+  <div class="strip" id="strip"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="panel" style="margin-top:16px">
+    <b>Who may load new filings?</b>
+    <div class="row" style="margin-top:8px">
+      <div class="f2"><label for="irole">Role</label>
+        <select id="irole"><option>GUEST</option><option selected>EMPLOYEE</option><option>MANAGER</option><option>EXECUTIVE</option></select></div>
+      <button id="ingest">Try to load a filing</button>
+      <span class="meta" id="ingestOut"></span>
+    </div>
+    <div class="note">Guest and employee should be refused. Manager and executive really re-ingest the filing, which takes about a minute.</div>
+  </div>
+
+  <div class="panel">
+    <div class="how">
+      <div><b>1. Identity</b><br>Amazon Cognito signs the user in. The role comes from the user's group in the signed token, never from the request.</div>
+      <div><b>2. Decision</b><br>Each retrieved chunk is scored from its relevance and the gap between its sensitivity and the user's clearance. Cleared: full text. Above clearance: summary or redacted, never full.</div>
+      <div><b>3. Evidence</b><br>The decision for every chunk is written to DynamoDB before the answer is generated. The request id shown on each card is that audit record.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const REGION = "us-east-1";
+const CLIENT_ID = "5vt84f5poh0hqkuqcblvkn45ai";
+const ROLES = [
+  {id: "GUEST", level: 0, email: "guest@test.com"},
+  {id: "EMPLOYEE", level: 1, email: "employee@test.com"},
+  {id: "MANAGER", level: 2, email: "manager@test.com"},
+  {id: "EXECUTIVE", level: 3, email: "executive@test.com"},
+];
+const TIERS = ["Public", "Internal", "Confidential", "Restricted"];
+const PRESETS = [
+  "any pending litigation or regulatory issues?",
+  "What risks does the company face from regulation?",
+  "Describe the company's legal proceedings.",
+];
+const tokens = {};
+let lastQueryResults = null;
+
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function store(k, v) { try { localStorage.setItem("vs_" + k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem("vs_" + k) || ""; } catch (e) { return ""; } }
+
+function baseUrl() {
+  let s = $("server").value.trim().replace(/\/+$/, "");
+  if (s && !/^https?:\/\//i.test(s)) s = "http://" + s;
+  return s;
+}
+
+async function getToken(role) {
+  const cached = tokens[role.id];
+  if (cached && Date.now() - cached.at < 45 * 60 * 1000) return cached.token;
+  const r = await fetch(`https://cognito-idp.${REGION}.amazonaws.com/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-amz-json-1.1",
+      "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth",
+    },
+    body: JSON.stringify({
+      AuthFlow: "USER_PASSWORD_AUTH",
+      ClientId: CLIENT_ID,
+      AuthParameters: {USERNAME: role.email, PASSWORD: $("pw").value},
+    }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.AuthenticationResult) {
+    throw new Error("Login failed for " + role.email + ": " + (j.message || j.__type || r.status));
+  }
+  tokens[role.id] = {token: j.AuthenticationResult.AccessToken, at: Date.now()};
+  return tokens[role.id].token;
+}
+
+async function api(path, token, body) {
+  let r;
+  try {
+    r = await fetch(baseUrl() + path, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "Authorization": "Bearer " + token},
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new Error("Could not reach the server. Check the URL, that the instance is running, and that your current IP is allowed on port 8000.");
+  }
+  const text = await r.text();
+  let data = {};
+  try { data = JSON.parse(text); } catch (e) {}
+  return {status: r.status, data, text};
+}
+
+function setStep(n, state) {
+  for (let i = 1; i <= 5; i++) {
+    const elStep = $("step-" + i);
+    if (i < n) elStep.className = "step done";
+    else if (i === n) elStep.className = "step " + state;
+    else elStep.className = "step";
+  }
+}
+
+function renderCard(role, res, err) {
+  const card = el("div", "card");
+  const h = el("h2");
+  h.appendChild(el("span", "", role.id));
+  h.appendChild(el("span", "lvl", "clearance level " + role.level));
+  card.appendChild(h);
+
+  if (err) { card.appendChild(el("div", "err", err)); return card; }
+  const d = res.data;
+  if (res.status !== 200) {
+    card.appendChild(el("div", "err", "HTTP " + res.status + ": " + (d.detail || res.text.slice(0, 200))));
+    return card;
+  }
+  if (!d.disclosure_log) {
+    card.appendChild(el("div", "err", d.answer || "No indexed content for this ticker. Load the filing first."));
+    return card;
+  }
+
+  // Telemetry badge
+  if (d.metrics) {
+    const tel = el("div", "telemetry");
+    tel.innerHTML = `<span>🔍 Vector: ${d.metrics.search_ms}ms</span><span>🛡️ ACRE: ${d.metrics.acre_ms}ms</span><span>📝 Dynamo: ${d.metrics.dynamodb_ms}ms</span><span>⚡ Total: ${d.metrics.total_ms}ms</span>`;
+    card.appendChild(tel);
+  }
+
+  card.appendChild(el("div", "answer", d.answer || ""));
+  d.disclosure_log.forEach((c, i) => {
+    const box = el("div", "chunk");
+    const top = el("div", "top");
+    top.appendChild(el("span", "", "Chunk " + (i + 1) + " · " + (TIERS[c.sensitivity] || "Tier " + c.sensitivity)));
+    top.appendChild(el("span", "chip " + c.decision, c.decision));
+    box.appendChild(top);
+    const bar = el("div", "bar");
+    const fill = document.createElement("i");
+    fill.style.width = Math.round(Math.max(0, Math.min(1, c.relevance)) * 100) + "%";
+    bar.appendChild(fill);
+    box.appendChild(bar);
+    box.appendChild(el("div", "meta", "relevance " + Number(c.relevance).toFixed(2) + " · exposure " + Number(c.score).toFixed(2)));
+    const src = (d.sources && d.sources[i]) || "";
+    box.appendChild(el("div", "snip", c.decision === "FULL" ? src.slice(0, 240) + (src.length > 240 ? "…" : "") : src));
+    card.appendChild(box);
+  });
+  card.appendChild(el("div", "meta", "audit record: " + (d.request_id ? d.request_id : "not written")));
+  return card;
+}
+
+function summarize(results) {
+  const strip = $("strip");
+  strip.textContent = "";
+  results.forEach(({role, res}) => {
+    const log = res && res.data && res.data.disclosure_log;
+    if (!log) return;
+    const n = (k) => log.filter((c) => c.decision === k).length;
+    const box = el("div");
+    box.appendChild(el("b", "", role.id));
+    box.appendChild(document.createTextNode(n("FULL") + " full · " + n("SUMMARY") + " summary · " + n("REDACTED") + " redacted"));
+    strip.appendChild(box);
+  });
+}
+
+async function runAll() {
+  if (!baseUrl()) { $("status").textContent = "Enter the server URL first."; return; }
+  if (!$("pw").value) { $("status").textContent = "Enter the test-user password first."; return; }
+  store("server", $("server").value); store("ticker", $("ticker").value); store("pw", $("pw").value);
+  
+  $("run").disabled = true;
+  $("status").textContent = "Executing security pipeline…";
+  $("grid").textContent = ""; $("strip").textContent = "";
+  $("exportAudit").style.display = "none";
+  
+  const pipeline = $("pipeline");
+  pipeline.style.display = "grid";
+  
+  try {
+    setStep(1, "active");
+    await new Promise(r => setTimeout(r, 150));
+    
+    const tokensMap = {};
+    for (const role of ROLES) {
+      tokensMap[role.id] = await getToken(role);
+    }
+    setStep(2, "active");
+    await new Promise(r => setTimeout(r, 150));
+
+    const body = {query: $("q").value.trim(), ticker: $("ticker").value.trim().toUpperCase()};
+    setStep(3, "active");
+    
+    const results = await Promise.all(ROLES.map(async (role) => {
+      try {
+        const res = await api("/query", tokensMap[role.id], body);
+        return {role, res};
+      } catch (e) {
+        return {role, err: e.message};
+      }
+    }));
+
+    setStep(4, "active");
+    await new Promise(r => setTimeout(r, 200));
+    setStep(5, "active");
+    await new Promise(r => setTimeout(r, 200));
+
+    for(let i=1; i<=5; i++) { $("step-"+i).className = "step done"; }
+
+    results.forEach((r) => $("grid").appendChild(renderCard(r.role, r.res, r.err)));
+    summarize(results);
+
+    lastQueryResults = results;
+    if (results.some(r => r.res && r.res.status === 200 && r.res.data && r.res.data.disclosure_log)) {
+      $("exportAudit").style.display = "inline-block";
+    }
+
+    $("status").textContent = "Pipeline execution complete.";
+  } catch (e) {
+    $("status").textContent = "Error: " + e.message;
+  }
+  $("run").disabled = false;
+}
+
+async function tryIngest() {
+  if (!baseUrl() || !$("pw").value) { $("ingestOut").textContent = "Fill in the server URL and password above first."; return; }
+  const role = ROLES.find((r) => r.id === $("irole").value);
+  $("ingest").disabled = true;
+  $("ingestOut").textContent = "Working…";
+  try {
+    const token = await getToken(role);
+    const res = await api("/ingest", token, {ticker: $("ticker").value.trim().toUpperCase()});
+    if (res.status === 200) {
+      $("ingestOut").textContent = role.id + " allowed: " + res.data.chunks_stored + " chunks stored" + (res.data.s3_key ? ", saved to S3 as " + res.data.s3_key : "");
+    } else {
+      $("ingestOut").textContent = role.id + " refused (HTTP " + res.status + "): " + (res.data.detail || res.text.slice(0, 120));
+    }
+  } catch (e) {
+    $("ingestOut").textContent = e.message;
+  }
+  $("ingest").disabled = false;
+}
+
+$("exportAudit").addEventListener("click", () => {
+  if (!lastQueryResults) return;
+  const auditReport = {
+    timestamp: new Date().toISOString(),
+    project: "VaultSight ACRE Enterprise RAG",
+    query: $("q").value.trim(),
+    ticker: $("ticker").value.trim().toUpperCase(),
+    evaluations: lastQueryResults.map(r => ({
+      role: r.role.id,
+      clearanceLevel: r.role.level,
+      email: r.role.email,
+      httpStatus: r.res ? r.res.status : "ERROR",
+      requestId: r.res && r.res.data ? r.res.data.request_id : null,
+      disclosureLog: r.res && r.res.data ? r.res.data.disclosure_log : r.err,
+      metrics: r.res && r.res.data ? r.res.data.metrics : null
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(auditReport, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `VaultSight_Telemetry_Audit_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+PRESETS.forEach((p) => {
+  const b = el("button", "", p);
+  b.type = "button";
+  b.addEventListener("click", () => { $("q").value = p; });
+  $("presets").appendChild(b);
+});
+$("server").value = load("server");
+$("ticker").value = load("ticker") || "AAPL";
+$("pw").value = load("pw");
+$("run").addEventListener("click", runAll);
+$("ingest").addEventListener("click", tryIngest);
+</script>
+</body>
+</html>
